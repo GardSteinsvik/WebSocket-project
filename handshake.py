@@ -5,7 +5,7 @@ from hashlib import sha1
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-wsAnswer = \
+answer = \
     'HTTP/1.1 101 Switching Protocols' \
     'Upgrade: Websocket' \
     'Connection: Upgrade' \
