@@ -8,7 +8,7 @@ from web_socket import WebSocket
 
 if __name__ == '__main__':
     server = WebSocketServer('0.0.0.0', 8000)
-    server_thread = Thread(target=server.listen, args=[5])
+    server_thread = Thread(target=server.listen)
     server_thread.start()
 
 

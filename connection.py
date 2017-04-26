@@ -2,54 +2,63 @@ from base64 import b64encode
 from hashlib import sha1
 from threading import Thread
 
-import time
-
 
 class Connection:
     GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
     answer = \
-        'HTTP/1.1 101 Switching Protocols' \
-        'Upgrade: Websocket' \
-        'Connection: Upgrade' \
+        'HTTP/1.1 101 Switching Protocols\n' \
+        'Upgrade: Websocket\n' \
+        'Connection: Upgrade\n' \
         'Sec-WebSocket-Accept: {0}\r\n\r\n'
 
     conn = None
     t = None
+    hands_shook = False
 
     def __init__(self, conn):
         self.conn = conn
 
     def do_handshake(self, header):
-        global answer
-        ws_answer = answer
-        valid_req = False
+        ws_answer = self.answer
+        valid_handshake_req = False
         for line in header.split('\r\n')[1:]:
             name, value = line.split(': ', 1)
 
             if name.lower() == "sec-websocket-key":
-                r_key = b64encode(sha1(value + self.GUID).digest())
+                h = value.strip() + self.GUID
+                s = sha1(h.encode()).digest()
+                r_key = b64encode(s).decode()
                 ws_answer = ws_answer.format(r_key)
-                valid_req = True
+                valid_handshake_req = True
 
-        if valid_req:
+        if valid_handshake_req:
             self.send(ws_answer)
+            self.hands_shook = True
             return True
         return False
 
     def send(self, msg):
-        pass
+        self.conn.send(msg.encode())
 
     def thread_handler(self):
-        print('Connection thread started')
-        time.sleep(1)
+        while True:
+            b = self.conn.recv(1024)
+            # msg = unmask(b)
+            msg = b.decode()
+            # if handshake not already done
+            if not self.hands_shook:
+                splits = msg.split('\r\n\r\n')
+
+                header = splits[0]
+                # if msg not valid handshake
+                if not self.do_handshake(header):
+                    # not a valid handshake as first request
+                    # close connection
+                    print('Not a valid handshake request recieved as first message. Closing connection...')
+                    self.conn.close()
+                    break
 
     def start(self):
         self.t = Thread(target=self.thread_handler)
         self.t.start()
-
-    def start_connection(self, req_header):
-        if self.do_handshake(req_header):
-            self.start()
-            return True
-        return False
