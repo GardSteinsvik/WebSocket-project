@@ -16,7 +16,5 @@ class WebSocketServer:
         while True:
             conn, address = self.sock.accept()
             print('Connection attempt recieved at ' + address[0])
-            print(conn)
-            print(address)
             connection = Connection(conn)
             connection.start()

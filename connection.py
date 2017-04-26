@@ -49,7 +49,6 @@ class Connection:
             # if handshake not already done
             if not self.hands_shook:
                 splits = msg.split('\r\n\r\n')
-
                 header = splits[0]
                 # if msg not valid handshake
                 if not self.do_handshake(header):
@@ -58,6 +57,8 @@ class Connection:
                     print('Not a valid handshake request recieved as first message. Closing connection...')
                     self.conn.close()
                     break
+                else:
+                    print('Valid handshake completed')
 
     def start(self):
         self.t = Thread(target=self.thread_handler)
