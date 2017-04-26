@@ -2,6 +2,8 @@ from base64 import b64encode
 from hashlib import sha1
 from threading import Thread
 
+import time
+
 
 class Connection:
     GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -11,7 +13,9 @@ class Connection:
         'Upgrade: Websocket' \
         'Connection: Upgrade' \
         'Sec-WebSocket-Accept: {0}\r\n\r\n'
+
     conn = None
+    t = None
 
     def __init__(self, conn):
         self.conn = conn
@@ -35,6 +39,14 @@ class Connection:
 
     def send(self, msg):
         pass
+
+    def thread_handler(self):
+        print('Connection thread started')
+        time.sleep(1)
+
+    def start(self):
+        self.t = Thread(target=self.thread_handler)
+        self.t.start()
 
     def start_connection(self, req_header):
         if self.do_handshake(req_header):
