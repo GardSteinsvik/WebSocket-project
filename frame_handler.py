@@ -11,41 +11,40 @@ OPCODE_PONG = 0xa
 
 def mask(data):
 
-    payload = data.encode('utf-8')
+    payload = bytearray(data.encode('utf-8'))
 
-    message = ""
+    message = []
 
     # Adding fin
-    b1 = '\x80'
-    # b1 |= OPCODE_TEXT
-    print(b1)
-    message += b1
+    b1 = 0x80
+    b1 |= OPCODE_TEXT
+    print(chr(b1))
+    message.append(chr(b1))
 
     b2 = 0
     payload_length = len(payload)
 
-    if payload_length == 126:
+    if payload_length < 126:
         b2 |= payload_length
         print(chr(b2).encode('utf-8'))
-        message += chr(b2)
+        message.append(chr(b2))
     elif payload_length < ((2 ** 16) - 1):
         b2 |= 126
-        message += chr(b2)
+        message.append(chr(b2))
         # packing to unsigned short
         l = struct.pack(">H", payload_length)
-        message += l
+        message.append(l)
     else:
         b2 |= 127
         message += chr(b2)
         # packing to unsigned long long
         l = struct.pack(">Q", payload_length)
-        message += l
+        message.append(l)
 
-    message += str(payload)
+    for c in payload:
+        message.append(c)
 
-    print(message.encode('utf-8'))
-
-    return message.encode('utf-8')
+    return message
 
 
 def unmask(data):
