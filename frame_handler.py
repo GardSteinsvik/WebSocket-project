@@ -1,57 +1,91 @@
 # -*- coding: utf-8 -*-
 import struct
 
-OPCODE_CONTINUATION = 0x0
-OPCODE_TEXT = 0x1
-OPCODE_BINARY = 0x2
-OPCODE_CLOSE = 0x8
-OPCODE_PING = 0x9
-OPCODE_PONG = 0xa
+FIN = b'\x81'
+OPCODE_CONTINUATION = b'\x81'
+OPCODE_TEXT = b'\x01'
+OPCODE_BINARY = b'\x02'
+OPCODE_CLOSE = b'\x08'
+OPCODE_PING = b'\x09'
+OPCODE_PONG = b'\x0a'
+
+"""
+      0       1       2       3       4       5       6       7
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-------+-+-------------+-------------------------------+
+     |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+     |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+     |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+     | |1|2|3|       |K|             |                               |
+     +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+     |     Extended payload length continued, if payload len == 127  |
+     + - - - - - - - - - - - - - - - +-------------------------------+
+     |                               |Masking-key, if MASK set to 1  |
+     +-------------------------------+-------------------------------+
+     | Masking-key (continued)       |          Payload Data         |
+     +-------------------------------- - - - - - - - - - - - - - - - +
+     :                     Payload Data continued ...                :
+     + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+     |                     Payload Data continued ...                |
+     +---------------------------------------------------------------+
+"""
 
 
-def mask(data):
+def build_frame(data, opcode=OPCODE_CONTINUATION, masking_key=None):
 
-    payload = bytearray(data.encode('utf-8'))
+    payload = data.encode('utf-8')
 
-    message = []
+    # The bytes in the header, no data
+    header = b''
 
-    # Adding fin
-    b1 = 0x80
-    b1 |= OPCODE_TEXT
-    print(chr(b1))
-    message.append(chr(b1))
+    # Adding fin and RSV1 2 & 3 = 0
+    header += FIN
 
-    b2 = 0
+    # Opcode
+    header += opcode
+
+    # Mask
+    if masking_key:
+        # first bit of the byte
+        mask_bit = 0x80
+    else:
+        mask_bit = 0x0
+
     payload_length = len(payload)
 
     if payload_length < 126:
-        b2 |= payload_length
-        print(chr(b2).encode('utf-8'))
-        message.append(chr(b2))
-    elif payload_length < ((2 ** 16) - 1):
-        b2 |= 126
-        message.append(chr(b2))
-        # packing to unsigned short
-        l = struct.pack(">H", payload_length)
-        message.append(l)
+        # Creates a byte with mask_bit first
+        # !B = 1 byte
+        header += struct.pack('!B', (mask_bit | payload_length))
+    elif payload_length < (2 ** 16):
+        # !H = 2
+        header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length)
     else:
-        b2 |= 127
-        message += chr(b2)
-        # packing to unsigned long long
-        l = struct.pack(">Q", payload_length)
-        message.append(l)
+        # !Q = 8 byte
+        header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
 
-    for c in payload:
-        message.append(c)
+    if not masking_key:
+        return bytes(header + payload)
 
-    return message
+    return bytes(header + masking_key + mask(payload, masking_key))
+
+
+def mask(data, masking_key):
+    masked = bytearray(data)
+    key = bytearray(masking_key)
+    for i in range(len(data)):
+        masked[i] = masked[i] ^ key[i % 4]
+    return bytes(masked)
 
 
 def unmask(data):
     frame = bytearray(data)
+    print(frame)
 
-    length = frame[1] & 127
+    length = frame[2] & 127
     print('length: ' + str(length))
+
+    # TODO fix umasking, bruker feil indexer
 
     mask_start = 2
     if length == 126:
@@ -70,6 +104,12 @@ def unmask(data):
 
 data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
 
-print(mask('test'))
+print(type(data[0]))
+
+data = build_frame('test')
+
+print(data)
+
+print(unmask(data))
 
 
