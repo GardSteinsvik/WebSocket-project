@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import struct
 
-FIN = b'\x81'
-OPCODE_CONTINUATION = b'\x81'
-OPCODE_TEXT = b'\x01'
-OPCODE_BINARY = b'\x02'
-OPCODE_CLOSE = b'\x08'
-OPCODE_PING = b'\x09'
-OPCODE_PONG = b'\x0a'
+OPCODE_CONTINUATION = 0x81
+OPCODE_TEXT = 0x01
+OPCODE_BINARY = 0x02
+OPCODE_CLOSE = 0x08
+OPCODE_PING = 0x09
+OPCODE_PONG = 0x0a
 
 """
 indx  0               1               2               3
@@ -38,36 +37,36 @@ indx  12              13              14              15
 """
 
 
-def build_frame(data, opcode=OPCODE_CONTINUATION):
-
+def build_frame(data, opcode=OPCODE_TEXT):
     payload = data.encode('utf-8')
 
     # The bytes in the header, no data
     header = b''
 
-    # Adding fin and RSV1 2 & 3 = 0
-    header += FIN
+    # Adding fin = 1 and RSV = 0 and opcode
+    fin_rsv_opcode = 128 + int(hex(opcode), 16)
+    header += struct.pack('!B', fin_rsv_opcode)
 
-    # Opcode
-    header += opcode
-
-    # Mask
+    # Mask, server does not send masked data
     mask_bit = 0x0
 
-    payload_length = len(payload)
+    payload_length = len(data)
 
     if payload_length < 126:
         # Creates a byte with mask_bit first
         # !B = 1 byte
         header += struct.pack('!B', (mask_bit | payload_length))
     elif payload_length < (2 ** 16):
-        # !H = 2
+        # !H = 2 bytes
         header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length)
     else:
-        # !Q = 8 byte
+        # !Q = 8 bytes
         header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
 
-    return bytes(header + payload)
+    # Adding 4 empty bytes to fill the masking key
+    header += struct.pack('!L', 0)
+
+    return header+payload
 
 
 def unmask(data):
@@ -102,7 +101,11 @@ if __name__ == '__main__':
 
     print(unmask(data))
 
-    # data = build_frame('test')
-    # print(data)
+    print('---------')
 
-    # print(unmask(data))
+    data = build_frame('test')
+    print(data)
+
+    print('---------')
+
+    print(unmask(data))
