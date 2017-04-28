@@ -10,7 +10,8 @@ OPCODE_PING = b'\x09'
 OPCODE_PONG = b'\x0a'
 
 """
-      0       1       2       3       4       5       6       7
+indx  0               1               2               3
+      0                   1                   2                   3
       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
      +-+-+-+-+-------+-+-------------+-------------------------------+
      |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
@@ -18,9 +19,15 @@ OPCODE_PONG = b'\x0a'
      |N|V|V|V|       |S|             |   (if payload len==126/127)   |
      | |1|2|3|       |K|             |                               |
      +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+indx  4               5               6               7
+     +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
      |     Extended payload length continued, if payload len == 127  |
      + - - - - - - - - - - - - - - - +-------------------------------+
+indx  8               9               10              11
+     + - - - - - - - - - - - - - - - +-------------------------------+
      |                               |Masking-key, if MASK set to 1  |
+     +-------------------------------+-------------------------------+
+indx  12              13              14              15    
      +-------------------------------+-------------------------------+
      | Masking-key (continued)       |          Payload Data         |
      +-------------------------------- - - - - - - - - - - - - - - - +
@@ -31,7 +38,7 @@ OPCODE_PONG = b'\x0a'
 """
 
 
-def build_frame(data, opcode=OPCODE_CONTINUATION, masking_key=None):
+def build_frame(data, opcode=OPCODE_CONTINUATION):
 
     payload = data.encode('utf-8')
 
@@ -45,11 +52,7 @@ def build_frame(data, opcode=OPCODE_CONTINUATION, masking_key=None):
     header += opcode
 
     # Mask
-    if masking_key:
-        # first bit of the byte
-        mask_bit = 0x80
-    else:
-        mask_bit = 0x0
+    mask_bit = 0x0
 
     payload_length = len(payload)
 
@@ -64,52 +67,42 @@ def build_frame(data, opcode=OPCODE_CONTINUATION, masking_key=None):
         # !Q = 8 byte
         header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
 
-    if not masking_key:
-        return bytes(header + payload)
-
-    return bytes(header + masking_key + mask(payload, masking_key))
-
-
-def mask(data, masking_key):
-    masked = bytearray(data)
-    key = bytearray(masking_key)
-    for i in range(len(data)):
-        masked[i] = masked[i] ^ key[i % 4]
-    return bytes(masked)
+    return bytes(header + payload)
 
 
 def unmask(data):
     frame = bytearray(data)
     print(frame)
 
-    length = frame[2] & 127
+    # Using & 127 to omit the first bit, which is the masking bit
+    # This gives us the payload length
+    length = frame[1] & 127
     print('length: ' + str(length))
 
-    # TODO fix umasking, bruker feil indexer
-
-    mask_start = 2
+    mask_key_start = 2
     if length == 126:
-        mask_start = 4
+        mask_key_start = 4
     elif length == 127:
-        mask_start = 10
+        mask_key_start = 10
 
-    data_start = mask_start + 4
+    # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
+    data_start = mask_key_start + 4
 
     output_bytes = []
     for i in range(data_start, data_start+length):
-        byte = frame[i] ^ frame[mask_start + (i - data_start) % 4]
+        # Using an XOR-operation with the payload and masking key to unmask the payload
+        byte = frame[i] ^ frame[mask_key_start + (i - data_start) % 4]
         output_bytes.append(byte)
 
     return "".join(map(chr, output_bytes))
 
-data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
+if __name__ == '__main__':
 
-print(type(data[0]))
+    data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
 
-data = build_frame('test')
+    print(unmask(data))
 
-print(data)
+    # data = build_frame('test')
+    # print(data)
 
-print(unmask(data))
-
-
+    # print(unmask(data))
