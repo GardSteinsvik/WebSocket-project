@@ -66,7 +66,7 @@ def build_frame(data, opcode=OPCODE_TEXT):
     # Adding 4 empty bytes to fill the masking key
     header += struct.pack('!L', 0)
 
-    return header+payload
+    return header + payload
 
 
 def unmask(data):
@@ -102,7 +102,8 @@ def unmask(data):
         byte = frame[i] ^ frame[mask_key_start + (i - data_start) % 4]
         output_bytes.append(byte)
 
-    return "".join(map(chr, output_bytes))
+    is_continuation = frame[0] & 128 == 0
+    return "".join(map(chr, output_bytes)), is_continuation
 
 if __name__ == '__main__':
 
