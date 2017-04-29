@@ -8,7 +8,8 @@ class WebSocketServer:
     sock = None
 
     def __init__(self, listen_ip, port):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = socket.socket()
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((listen_ip, port))
 
     def listen(self):
