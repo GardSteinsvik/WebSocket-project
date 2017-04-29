@@ -70,7 +70,7 @@ def build_frame(data, opcode=OPCODE_TEXT):
 
 
 def unmask(data):
-    frame = bytearray(data, encoding='utf-8')
+    frame = bytearray(data)
     print('\n\nFrame comes here:')
     print(frame)
 

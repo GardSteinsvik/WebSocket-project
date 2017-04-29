@@ -5,27 +5,6 @@ from threading import Thread
 from frame_handler import unmask
 
 
-def parse_data(data):
-    """
-    Returns headers and payload as two variables.
-    :param data: data received from client
-    :return: Headers as dictionary and unmasked payload as two variables.
-    """
-    header_split = b'\r\n\r\n'
-    print(data)
-    header_lines, payload = data.split(header_split, 1)
-
-    if payload:
-        payload = unmask(payload)
-
-    headers = {}
-    for l in header_lines.split(b'\r\n')[1:]:
-        key, value = l.split(b': ')
-        headers[key.decode('utf-8').strip()] = value.decode('utf-8').strip()
-
-    return headers, payload
-
-
 class Connection:
     GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -41,6 +20,22 @@ class Connection:
 
     def __init__(self, conn):
         self.conn = conn
+
+    def parse_as_headers(self, data):
+        """
+        Parses data as a list of headers and returns the headers as a dictionary.
+        :param data: data received from client
+        :return: Headers as a dictionary
+        """
+        print(data)
+        data = data.strip()
+
+        headers = {}
+        for l in data.split(b'\r\n')[1:]:
+            key, value = l.split(b': ')
+            headers[key.decode('utf-8').strip()] = value.decode('utf-8').strip()
+
+        return headers
 
     def do_handshake(self, headers):
         sec_web_key = 'Sec-WebSocket-Key'
@@ -62,11 +57,10 @@ class Connection:
 
     def thread_handler(self):
         while True:
-            data = self.conn.recv(1024)
-            headers, payload = parse_data(data)
+            msg = self.conn.recv(1024)
             # if handshake not already done
             if not self.hands_shook:
-
+                headers = self.parse_as_headers(msg)
                 # if msg not valid handshake
                 if not self.do_handshake(headers):
                     # not a valid handshake as first request
@@ -76,6 +70,9 @@ class Connection:
                     break
                 else:
                     print('Valid handshake completed')
+            else:
+                print(unmask(msg))
+
 
     def start(self):
         self.t = Thread(target=self.thread_handler)
