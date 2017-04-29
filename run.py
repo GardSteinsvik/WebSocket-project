@@ -4,7 +4,6 @@ import time
 from threading import Thread
 
 from web_socket_server import WebSocketServer
-from web_socket import WebSocket
 
 if __name__ == '__main__':
     server = WebSocketServer('0.0.0.0', 8000)
@@ -15,6 +14,7 @@ if __name__ == '__main__':
     def signal_handler(signal, frame):
         print("Caught Ctrl+C, shutting down...")
         sys.exit()
+
 
     signal.signal(signal.SIGINT, signal_handler)
 

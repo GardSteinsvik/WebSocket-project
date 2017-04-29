@@ -70,7 +70,8 @@ def build_frame(data, opcode=OPCODE_TEXT):
 
 
 def unmask(data):
-    frame = bytearray(data)
+    frame = bytearray(data, encoding='utf-8')
+    print('\n\nFrame comes here:')
     print(frame)
 
     # Using & 127 to omit the first bit, which is the masking bit
