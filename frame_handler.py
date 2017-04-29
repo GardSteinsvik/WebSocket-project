@@ -58,10 +58,10 @@ def build_frame(data, opcode=OPCODE_TEXT):
         header += struct.pack('!B', (mask_bit | payload_length))
     elif payload_length < (2 ** 16):
         # !H = 2 bytes
-        header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length)
+        header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length-126)
     else:
         # !Q = 8 bytes
-        header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
+        header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length-127)
 
     # Adding 4 empty bytes to fill the masking key
     header += struct.pack('!L', 0)
@@ -77,13 +77,21 @@ def unmask(data):
     # Using & 127 to omit the first bit, which is the masking bit
     # This gives us the payload length
     length = frame[1] & 127
-    print('length: ' + str(length))
+    print('length in first byte: {}'.format(length))
 
     mask_key_start = 2
     if length == 126:
         mask_key_start = 4
+        print('length in second byte: {}'.format(frame[2]))
+        print('length in third byte: {}'.format(frame[3]))
+        length += (frame[2] + frame[3])
     elif length == 127:
         mask_key_start = 10
+        for i in range(4, 10):
+            print('length og byte {0}: {1}'.format(i, frame[i]))
+            length += frame[i]
+
+    print('total length: {}'.format(length))
 
     # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
     data_start = mask_key_start + 4
@@ -104,7 +112,7 @@ if __name__ == '__main__':
 
     print('---------')
 
-    data = build_frame('test')
+    data = build_frame('X?P=U%46&D%^?jQL!srQS!ke9K-$5KUFd4jJKK6jdv3Yp!=4cR4F!cC+E6Y!VwdL5@2!6kwcr*79pUJv?8B=*KWzC+PZxt7&8m56w!TQqy6BDec#qVTkJQFBj_4U$')
     print(data)
 
     print('---------')
