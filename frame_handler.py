@@ -103,7 +103,8 @@ def unmask(data):
         output_bytes.append(byte)
 
     is_continuation = frame[0] & 128 == 0
-    return "".join(map(chr, output_bytes)), is_continuation
+    is_close = frame[0] & 15 == OPCODE_CLOSE
+    return "".join(map(chr, output_bytes)), is_continuation, is_close
 
 if __name__ == '__main__':
 
