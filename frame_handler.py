@@ -3,15 +3,6 @@ import struct
 
 from unmasked_message import UnmaskedMessage
 
-FIN = 0x80
-OPCODE = 0xf
-OPCODE_CONTINUATION = 0x00
-OPCODE_TEXT = 0x01
-OPCODE_BINARY = 0x02
-OPCODE_CLOSE = 0x08
-OPCODE_PING = 0x09
-OPCODE_PONG = 0x0a
-
 """
 indx  0               1               2               3
       0                   1                   2                   3
@@ -40,21 +31,35 @@ indx  12              13              14              15
      +---------------------------------------------------------------+
 """
 
+FIN = 0x80
+OPCODE = 0x0f
+OPCODE_CONTINUATION = 0x00
+OPCODE_TEXT = 0x01
+OPCODE_BINARY = 0x02
+OPCODE_CLOSE = 0x08
+OPCODE_PING = 0x09
+OPCODE_PONG = 0x0a
 
-def build_frame(data, opcode=OPCODE_TEXT):
-    payload = data.encode('utf-8')
+
+def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
+    print('BUILDING FRAME')
+
+    payload = None
+    if opcode == OPCODE_TEXT or opcode == OPCODE_BINARY or opcode == OPCODE_CONTINUATION:
+        payload = outgoing_data.encode('utf-8')
 
     # The bytes in the header, no data
     header = b''
 
     # Adding fin = 1 and RSV = 0 and opcode
-    fin_rsv_opcode = 128 + int(hex(opcode), 16)
+    fin_rsv_opcode = FIN + int(hex(opcode), 16)
     header += struct.pack('!B', fin_rsv_opcode)
 
     # Mask, server does not send masked data
     mask_bit = 0x0
 
-    payload_length = len(data)
+    print(payload)
+    payload_length = len(payload)
 
     if payload_length < 126:
         # Creates a byte with mask_bit first
@@ -62,10 +67,10 @@ def build_frame(data, opcode=OPCODE_TEXT):
         header += struct.pack('!B', (mask_bit | payload_length))
     elif payload_length < (2 ** 16):
         # !H = 2 bytes
-        header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length-126)
+        header += struct.pack('!B', (mask_bit | 126)) + struct.pack('!H', payload_length)
     else:
         # !Q = 8 bytes
-        header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length-127)
+        header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
 
     # Adding 4 empty bytes to fill the masking key
     header += struct.pack('!L', 0)
@@ -73,9 +78,10 @@ def build_frame(data, opcode=OPCODE_TEXT):
     return header + payload
 
 
-def unmask(data):
-    frame = bytearray(data)
-    print('\n\nFrame comes here:')
+def unmask(incoming_data):
+    print('UNMASKING')
+    frame = bytearray(incoming_data)
+    print('Frame comes here:')
     print(frame)
 
     # Using & 127 to omit the first bit, which is the masking bit
@@ -88,11 +94,12 @@ def unmask(data):
         mask_key_start = 4
         print('length in second byte: {}'.format(frame[2]))
         print('length in third byte: {}'.format(frame[3]))
-        length += (frame[2] + frame[3])
+        length = (frame[2] + frame[3])
     elif length == 127:
         mask_key_start = 10
-        for i in range(4, 10):
-            print('length og byte {0}: {1}'.format(i, frame[i]))
+        length = 0
+        for i in range(2, 10):
+            print('length of byte {0}: {1}'.format(i, frame[i]))
             length += frame[i]
 
     print('total length: {}'.format(length))
@@ -105,6 +112,8 @@ def unmask(data):
         # Using an XOR-operation with the payload and masking key to unmask the payload
         byte = frame[i] ^ frame[mask_key_start + (i - data_start) % 4]
         output_bytes.append(byte)
+
+    print('Output bytes: {}'.format(output_bytes))
 
     msg = UnmaskedMessage()
     msg.is_close_fin = frame[0] & FIN == 0
@@ -133,9 +142,11 @@ if __name__ == '__main__':
 
     print('---------')
 
-    data = build_frame('X?P=U%46&D%^?jQL!srQS!ke9K-$5KUFd4jJKK6jdv3Yp!=4cR4F!cC+E6Y!VwdL5@2!6kwcr*79pUJv?8B=*KWzC+PZxt7&8m56w!TQqy6BDec#qVTkJQFBj_4U$')
+    # data = build_frame('X?P=U%46&D%^?jQL!srQS!ke9K-$5KUFd4jJKK6jdv3Yp!=4cR4F!cC+E6Y!VwdL5@2!6kwcr*79pUJv?8B=*KWzC+PZxt7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
+    # data = build_frame('☭☭☭☭', OPCODE_TEXT)
+    data = build_frame('æøå', OPCODE_TEXT)
     print(data)
 
     print('---------')
 
-    print(unmask(data))
+    print(unmask(data).return_data)
