@@ -107,13 +107,10 @@ def unmask(incoming_data):
     # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
     data_start = mask_key_start + 4
 
-    output_bytes = []
+    output_bytes = b''
     for i in range(data_start, data_start+length):
         # Using an XOR-operation with the payload and masking key to unmask the payload
-        byte = frame[i] ^ frame[mask_key_start + (i - data_start) % 4]
-        output_bytes.append(byte)
-
-    print('Output bytes: {}'.format(output_bytes))
+        output_bytes += struct.pack('!B', frame[i] ^ frame[mask_key_start + (i - data_start) % 4])
 
     msg = UnmaskedMessage()
     msg.is_close_fin = frame[0] & FIN == 0
@@ -127,7 +124,7 @@ def unmask(incoming_data):
     msg.is_binary = opcode == OPCODE_BINARY
 
     if msg.is_text:
-        msg.return_data = "".join(map(chr, output_bytes))
+        msg.return_data = output_bytes.decode('utf-8')
     if msg.is_binary:
         msg.return_data = output_bytes
 
@@ -136,15 +133,14 @@ def unmask(incoming_data):
 
 if __name__ == '__main__':
 
-    data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
+    # data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
+    #
+    # print(unmask(data))
 
-    print(unmask(data))
-
-    print('---------')
-
-    # data = build_frame('X?P=U%46&D%^?jQL!srQS!ke9K-$5KUFd4jJKK6jdv3Yp!=4cR4F!cC+E6Y!VwdL5@2!6kwcr*79pUJv?8B=*KWzC+PZxt7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
+    data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
+                       'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
     # data = build_frame('☭☭☭☭', OPCODE_TEXT)
-    data = build_frame('æøå', OPCODE_TEXT)
+    # data = build_frame('æøå', OPCODE_TEXT)
     print(data)
 
     print('---------')
