@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import struct
 
-OPCODE_CONTINUATION = 0x81
+from unmasked_message import UnmaskedMessage
+
+FIN = 0x80
+OPCODE_CONTINUATION = 0x00
 OPCODE_TEXT = 0x01
 OPCODE_BINARY = 0x02
 OPCODE_CLOSE = 0x08
@@ -102,9 +105,21 @@ def unmask(data):
         byte = frame[i] ^ frame[mask_key_start + (i - data_start) % 4]
         output_bytes.append(byte)
 
-    is_continuation = frame[0] & 128 == 0
-    is_close = frame[0] & 15 == OPCODE_CLOSE
-    return "".join(map(chr, output_bytes)), is_continuation, is_close
+    msg = UnmaskedMessage()
+
+    msg.is_continuation = frame[0] & FIN == 0
+    msg.is_close = frame[0] & 15 == OPCODE_CLOSE
+    msg.is_ping = frame[0] & 15 == OPCODE_PING
+    msg.is_text = frame[0] & 15 == OPCODE_TEXT
+    msg.is_binary = frame[0] & 15 == OPCODE_BINARY
+
+    if msg.is_text:
+        msg.return_data = "".join(map(chr, output_bytes))
+    if msg.is_binary:
+        msg.return_data = output_bytes
+
+    return msg
+
 
 if __name__ == '__main__':
 
