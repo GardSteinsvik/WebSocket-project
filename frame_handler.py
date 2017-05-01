@@ -58,8 +58,9 @@ def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
     # Mask, server does not send masked data
     mask_bit = 0x0
 
-    print(payload)
+    print('Payload: {}'.format(payload))
     payload_length = len(payload)
+    print('Payload length: {}'.format(payload_length))
 
     if payload_length < 126:
         # Creates a byte with mask_bit first
@@ -92,15 +93,18 @@ def unmask(incoming_data):
     mask_key_start = 2
     if length == 126:
         mask_key_start = 4
-        print('length in second byte: {}'.format(frame[2]))
-        print('length in third byte: {}'.format(frame[3]))
-        length = (frame[2] + frame[3])
+        print('decimal value in second byte: {}'.format(frame[2]))
+        print('decimal value in third byte: {}'.format(frame[3]))
+        length = (frame[2] << 8) + frame[3]
     elif length == 127:
         mask_key_start = 10
         length = 0
+        # Going though every byte in the extended payload length, and adding the decimal values
+        j = 7
         for i in range(2, 10):
-            print('length of byte {0}: {1}'.format(i, frame[i]))
-            length += frame[i]
+            print('decimal value of byte {0}: {1}'.format(i, frame[i]))
+            length += (frame[i] << (8 * j))
+            j -= 1
 
     print('total length: {}'.format(length))
 
@@ -137,10 +141,11 @@ if __name__ == '__main__':
     #
     # print(unmask(data))
 
-    data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
-                       'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
-    # data = build_frame('☭☭☭☭', OPCODE_TEXT)
-    # data = build_frame('æøå', OPCODE_TEXT)
+    # data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
+    #                   'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
+    data = build_frame('☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭'
+                       '☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭a', OPCODE_TEXT)
+
     print(data)
 
     print('---------')
