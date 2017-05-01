@@ -4,6 +4,7 @@ import struct
 from unmasked_message import UnmaskedMessage
 
 FIN = 0x80
+OPCODE = 0xf
 OPCODE_CONTINUATION = 0x00
 OPCODE_TEXT = 0x01
 OPCODE_BINARY = 0x02
@@ -106,12 +107,15 @@ def unmask(data):
         output_bytes.append(byte)
 
     msg = UnmaskedMessage()
+    msg.is_close_fin = frame[0] & FIN == 0
 
-    msg.is_continuation = frame[0] & FIN == 0
-    msg.is_close = frame[0] & 15 == OPCODE_CLOSE
-    msg.is_ping = frame[0] & 15 == OPCODE_PING
-    msg.is_text = frame[0] & 15 == OPCODE_TEXT
-    msg.is_binary = frame[0] & 15 == OPCODE_BINARY
+    opcode = frame[0] & OPCODE
+    msg.is_continuation = opcode == OPCODE_CONTINUATION
+    msg.is_close = opcode == OPCODE_CLOSE
+    msg.is_ping = opcode == OPCODE_PING
+    msg.is_pong = opcode == OPCODE_PONG
+    msg.is_text = opcode == OPCODE_TEXT
+    msg.is_binary = opcode == OPCODE_BINARY
 
     if msg.is_text:
         msg.return_data = "".join(map(chr, output_bytes))

@@ -53,12 +53,12 @@ class WebSocket:
                 print('Valid handshake completed')
         else:
             msg = unmask(msg)
-            print('cont:', msg.is_continuation, '\nclose:', msg.is_close)
+            print('last_frame:', msg.is_close_fin, '\nclose:', msg.is_close)
             if msg.is_close:
                 print('Connection closing')
                 self.conn.close()
-            if msg.is_continuation:
-                return msg.is_continutation + self.recv()
+            if msg.is_close_fin:
+                return msg.is_close_fin + self.recv()
             return msg.return_data
 
     @staticmethod
