@@ -13,7 +13,7 @@
 
                 function connect() {
                     var socket;
-                    var host = "ws://localhost:80";
+                    var host = "wss://localhost:443";
 
                     try {
                         socket = new WebSocket(host);
@@ -71,7 +71,7 @@
             }
         });
     </script>
-    <title>WebSockets Client</title>
+    <title>SSL WebSockets Client</title>
 
 </head>
 <body>
@@ -79,7 +79,7 @@
 
     <div id="container">
 
-        <h1>WebSockets Client</h1>
+        <h1>SSL WebSockets Client</h1>
 
         <div id="chatLog">
 
