@@ -49,8 +49,10 @@ def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
         outgoing_data = ''
 
     payload = None
-    if opcode == OPCODE_TEXT or opcode == OPCODE_BINARY or opcode == OPCODE_CONTINUATION:
+    if opcode == OPCODE_TEXT or opcode == OPCODE_CLOSE or opcode == OPCODE_PING or opcode == OPCODE_PONG:
         payload = outgoing_data.encode('utf-8')
+    if opcode == OPCODE_BINARY:
+        payload = outgoing_data
 
     # The bytes in the header, no data
     header = b''
