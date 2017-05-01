@@ -18,6 +18,7 @@ class WebSocket:
 
     def __init__(self, conn):
         self.conn = conn
+        self.recv()
 
     def do_handshake(self, headers):
         sec_web_key = 'Sec-WebSocket-Key'
@@ -28,13 +29,13 @@ class WebSocket:
             s = sha1(h.encode()).digest()
             r_key = b64encode(s).decode()
             ws_answer = self.handshake_ans.format(r_key)
-            self.send(ws_answer)
+            self.send_msg(ws_answer)
             self.hands_shook = True
             return True
 
         return False
 
-    def send(self, msg):
+    def send_msg(self, msg):
         self.conn.send(msg.encode())
 
     def recv(self):
@@ -45,16 +46,20 @@ class WebSocket:
             if not self.do_handshake(headers):
                 # not a valid handshake as first request
                 # close connection
-                print('Not a valid handshake request recieved as first message. Closing connection...')
+                print('Not a valid handshake request received as first message. Closing connection...')
                 self.conn.close()
-                return None
+                print('Socket closed')
             else:
-                return 'Valid handshake completed'
+                print('Valid handshake completed')
         else:
-            payload, is_cont = unmask(msg)
-            if is_cont:
-                return is_cont + self.recv()
-            return payload
+            msg = unmask(msg)
+            print('cont:', msg.is_continuation, '\nclose:', msg.is_close)
+            if msg.is_close:
+                print('Connection closing')
+                self.conn.close()
+            if msg.is_continuation:
+                return msg.is_continutation + self.recv()
+            return msg.return_data
 
     @staticmethod
     def parse_as_headers(data):

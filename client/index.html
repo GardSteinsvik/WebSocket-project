@@ -13,10 +13,10 @@
 
                 function connect() {
                     var socket;
-                    var host = "ws://localhost:8000";
+                    var host = "ws://localhost:80";
 
                     try {
-                        var socket = new WebSocket(host);
+                        socket = new WebSocket(host);
 
                         message('<p class="event">Socket Status: ' + socket.readyState);
 
