@@ -114,7 +114,7 @@ def unmask(incoming_data):
         raise ValueError('1002 - A control frame cannot be fragmented')
 
     # Checking if the masking bit is 1
-    if frame[1] & 128:
+    if not frame[1] & 128:
         raise ValueError('1002 - Mask bit sent from client must be 1')
 
     # Using & 127 to omit the first bit, which is the masking bit
