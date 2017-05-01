@@ -18,7 +18,7 @@ class WebSocket:
 
     def __init__(self, conn):
         self.conn = conn
-        self.recv()
+        self.conn.setblocking(0)
 
     def do_handshake(self, headers):
         sec_web_key = 'Sec-WebSocket-Key'
