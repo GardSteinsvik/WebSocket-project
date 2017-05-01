@@ -33,6 +33,7 @@ indx  12              13              14              15
 
 FIN = 0x80
 OPCODE = 0x0f
+
 OPCODE_CONTINUATION = 0x00
 OPCODE_TEXT = 0x01
 OPCODE_BINARY = 0x02
@@ -43,6 +44,9 @@ OPCODE_PONG = 0x0a
 
 def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
     print('BUILDING FRAME')
+
+    if outgoing_data is None:
+        outgoing_data = ''
 
     payload = None
     if opcode == OPCODE_TEXT or opcode == OPCODE_BINARY or opcode == OPCODE_CONTINUATION:
@@ -81,14 +85,44 @@ def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
 
 def unmask(incoming_data):
     print('UNMASKING')
+    if not incoming_data:
+        raise ValueError('1002 - No data to unmask')
+
     frame = bytearray(incoming_data)
     print('Frame comes here:')
     print(frame)
+
+    opcode = frame[0] & OPCODE
+    fin = frame[0] & FIN
+
+    # Checking if the fin 1 or 0
+    if fin != 0x80 and fin != 0:
+        raise ValueError('1002 - Fin must be 1 or 0')
+
+    # Checking if the rsv values are 0
+    if frame[0] & 0x70 != 0:
+        raise ValueError('1002 - RSV values must be 0')
+
+    # Checking for valid opcodes
+    if 0x02 < opcode < 0x08 or opcode > 0x0a:
+        raise ValueError('1002 - Reserved opcode')
+
+    # Checking if a control frame is fragmented
+    if opcode > 0x07 and fin == 0:
+        raise ValueError('1002 - A control frame cannot be fragmented')
+
+    # Checking if the masking bit is 1
+    if frame[1] & 128:
+        raise ValueError('1002 - Mask bit sent from client must be 1')
 
     # Using & 127 to omit the first bit, which is the masking bit
     # This gives us the payload length
     length = frame[1] & 127
     print('length in first byte: {}'.format(length))
+
+    # Checking if a control frame is carrying a too large payload
+    if opcode > 0x07 and length > 125:
+        raise ValueError('1002 - A control frame cannot use extended payload length')
 
     mask_key_start = 2
     if length == 126:
@@ -111,6 +145,11 @@ def unmask(incoming_data):
     # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
     data_start = mask_key_start + 4
 
+    try:
+        frame[data_start+length-1]
+    except IndexError:
+        raise ValueError('1002 - Provided length of payload is larger than the actual payload')
+
     output_bytes = b''
     for i in range(data_start, data_start+length):
         # Using an XOR-operation with the payload and masking key to unmask the payload
@@ -119,7 +158,6 @@ def unmask(incoming_data):
     msg = UnmaskedMessage()
     msg.is_close_fin = frame[0] & FIN == 0
 
-    opcode = frame[0] & OPCODE
     msg.is_continuation = opcode == OPCODE_CONTINUATION
     msg.is_close = opcode == OPCODE_CLOSE
     msg.is_ping = opcode == OPCODE_PING
@@ -150,4 +188,6 @@ if __name__ == '__main__':
 
     print('---------')
 
-    print(unmask(data).return_data)
+    # print(unmask(data).return_data)
+
+    print(unmask(b''))
