@@ -25,6 +25,7 @@ def signal_handler(signal, frame):
 
 if __name__ == '__main__':
     s = WebSocketServer('0.0.0.0', 80)
+    # starts the server. This call is non-blocking
     s.start(message_handler, worker_thread_count=20)
 
     signal.signal(signal.SIGINT, signal_handler)
