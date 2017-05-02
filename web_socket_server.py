@@ -41,7 +41,7 @@ class WebSocketServer:
             try:
                 conn, address = self.server_socket.accept()
                 if self.debug:
-                    print('Connection attempt recieved at ' + address[0])
+                    print('Connection attempt received at ' + address[0])
                 self.queue.put(WebSocket(conn, ping_interval_seconds=self.ping_interval_seconds,
                                          ping_pong_keep_alive_interval=self.ping_pong_keep_alive_interval,
                                          debug=self.debug))

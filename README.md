@@ -2,7 +2,7 @@
 Project in "Nettverksprogrammering". IDI, NTNU.
 
 ## Usage
-This example creates a server that prints messages and the connectino object that received the message out to the console.
+This example creates a server that prints messages and the connection object that received the message out to the console.
 
 ```python
 import signal

@@ -157,7 +157,7 @@ class WebSocket:
         Handles a pong-request. Nothing has to be done here.
         """
         if self.debug:
-            print('Recieved pong')
+            print('Received pong')
         pass
 
     def send_ping(self):
