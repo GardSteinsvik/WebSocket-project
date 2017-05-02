@@ -16,13 +16,14 @@ class WebSocketServer:
 
     queue = Queue()
 
-    def __init__(self, listen_ip, port, ping_interval_seconds=20, ping_pong_keep_alive_interval=3, debug=False):
+    def __init__(self, listen_ip, port, ping_interval_seconds=20, ping_pong_keep_alive_interval=3, debug=False,
+                 cert_file=None, key_file=None):
         self.server_socket = socket.socket()
-        if port == 443:
+        if cert_file and key_file:
             self.server_socket = ssl.wrap_socket(self.server_socket,
                                                  server_side=True,
-                                                 certfile="server.crt",
-                                                 keyfile="server.key",
+                                                 certfile=cert_file,
+                                                 keyfile=key_file,
                                                  ssl_version=ssl.PROTOCOL_SSLv23)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((listen_ip, port))
