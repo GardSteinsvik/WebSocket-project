@@ -43,6 +43,14 @@ OPCODE_PONG = 0x0a
 
 
 def build_frame(outgoing_data, opcode, data_type=OPCODE_TEXT):
+    """
+    Builds a frame for the server to send
+    :param outgoing_data: The payload of the frame 
+    :param opcode: The opcode of the frame
+    :param data_type: The data type of the payload. This is always None, OPCODE_TEXT or OPCODE_BINARY.
+    It is used to tell the builder the data type if the opcode is OPCODE_CONTINUATION, so that it can encode it properly
+    :return: a frame supporting RFC6455
+    """
     if opcode == OPCODE_BINARY and not data_type == OPCODE_BINARY:
         raise ValueError('1007 - Invalid frame, opcode is binary data, but the specified data type is not binary data')
 
@@ -80,11 +88,18 @@ def build_frame(outgoing_data, opcode, data_type=OPCODE_TEXT):
     return header + payload
 
 
-def unmask(incoming_data, data_type=None):
-    if not incoming_data:
-        raise ValueError('1002 - No data to unmask')
+def unmask(incoming_frame, data_type=None):
+    """
+    This method interprets a frame and unmasks the payload
+    :param incoming_frame: A string of text, or bytes object b''
+    :param data_type: Specifies data type if opcode is OPCODE_CONTINUATION. It is None otherwise.
+    :return: An UnmaskedMessage object containing the frame properties and the payload.
+    The payload is formatted as a string of decoded text or bytes object with decoded bytes
+    """
+    if not incoming_frame:
+        raise ValueError('1002 - No frame to unmask')
 
-    frame = bytearray(incoming_data)
+    frame = bytearray(incoming_frame)
 
     opcode = frame[0] & OPCODE
     fin = frame[0] & FIN
@@ -162,16 +177,14 @@ def unmask(incoming_data, data_type=None):
 
 if __name__ == '__main__':
 
-    data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
-
-    # data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
-    #                    'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå'
-    #                    , OPCODE_BINARY, OPCODE_TEXT)
-
-    data = build_frame(b'\x34\x65\x33', OPCODE_BINARY, OPCODE_BINARY)
+    data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
+                       'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå'
+                       , OPCODE_TEXT, OPCODE_TEXT)
 
     print(data)
 
     print('---------')
+
+    data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
 
     print(unmask(data).return_data)
