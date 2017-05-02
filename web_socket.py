@@ -28,11 +28,12 @@ class WebSocket:
     ping_interval_seconds = 20
     ping_pong_keep_alive_interval = 3
 
-    def __init__(self, conn, ping_interval_seconds, ping_pong_keep_alive_interval):
+    def __init__(self, conn, ping_interval_seconds, ping_pong_keep_alive_interval, debug=False):
         self.conn = conn
         self.conn.setblocking(0)
         self.ping_interval_seconds = ping_interval_seconds
         self.ping_pong_keep_alive_interval = ping_pong_keep_alive_interval
+        self.debug = debug
 
     def keep_alive(self):
         now = time.time()
@@ -80,10 +81,8 @@ class WebSocket:
             return
 
         if self.hands_shook:
-            # print('bytes recieved:', bytes_rec)
             try:
                 if self.buffer:
-                    print(self.buffer.datatype)
                     msg = frame_handler.unmask(bytes_rec, self.buffer.datatype)
                 else:
                     msg = frame_handler.unmask(bytes_rec)
@@ -91,8 +90,6 @@ class WebSocket:
                 self.send_close(er)
                 self.close()
                 return
-
-            print(vars(msg))
 
             payload = msg.return_data
 
@@ -124,21 +121,26 @@ class WebSocket:
             if not self.do_handshake(headers):
                 # not a valid handshake as first request
                 # close connection
-                print('Not a valid handshake request received as first message. Closing connection...')
+                if self.debug:
+                    print('Not a valid handshake request received as first message. Closing connection...')
                 self.close()
             else:
-                print('Valid handshake completed')
+                if self.debug:
+                    print('Valid handshake completed')
 
     def handle_pong(self):
-        # print('Recieved pong')
+        if self.debug:
+            print('Recieved pong')
         pass
 
     def send_ping(self):
-        print('Sending ping')
+        if self.debug:
+            print('Sending ping')
         self.send_msg(frame_handler.build_frame('phony', opcode=frame_handler.OPCODE_PING))
 
     def send_close(self, msg):
-        print('Sending close')
+        if self.debug:
+            print('Sending close')
         self.send_msg(frame_handler.build_frame(msg, frame_handler.OPCODE_CLOSE))
 
     def handle_ping(self, message):

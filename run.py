@@ -16,7 +16,7 @@ def signal_handler(signal, frame):
 
 
 if __name__ == '__main__':
-    s = WebSocketServer('0.0.0.0', 80)
-    s.start(connection_handler, 20)
+    s = WebSocketServer('0.0.0.0', 80, debug=True)
+    s.start(connection_handler, worker_thread_count=20)
 
     signal.signal(signal.SIGINT, signal_handler)

@@ -12,11 +12,11 @@ class WebSocketServer:
 
     threads = []
 
-    is_kill = False
+    exit_scheduled = False
 
     queue = Queue()
 
-    def __init__(self, listen_ip, port, ping_interval_seconds=20, ping_pong_keep_alive_interval=3):
+    def __init__(self, listen_ip, port, ping_interval_seconds=20, ping_pong_keep_alive_interval=3, debug=False):
         self.server_socket = socket.socket()
         if port == 443:
             self.server_socket = ssl.wrap_socket(self.server_socket,
@@ -28,21 +28,24 @@ class WebSocketServer:
         self.server_socket.bind((listen_ip, port))
         self.ping_interval_seconds = ping_interval_seconds
         self.ping_pong_keep_alive_interval = ping_pong_keep_alive_interval
+        self.debug = debug
 
     def listen(self):
         self.server_socket.setblocking(0)
         self.server_socket.listen()
-        while not self.is_kill:
+        while not self.exit_scheduled:
             try:
                 conn, address = self.server_socket.accept()
-                print('Connection attempt recieved at ' + address[0])
+                if self.debug:
+                    print('Connection attempt recieved at ' + address[0])
                 self.queue.put(WebSocket(conn, ping_interval_seconds=self.ping_interval_seconds,
-                                         ping_pong_keep_alive_interval=self.ping_pong_keep_alive_interval))
+                                         ping_pong_keep_alive_interval=self.ping_pong_keep_alive_interval,
+                                         debug=self.debug))
             except socket.error:
                 pass  # no connection yet
 
     def worker(self, func):
-        while not self.is_kill:
+        while not self.exit_scheduled:
             self.single_action(func)
 
     def single_action(self, func):
@@ -57,15 +60,17 @@ class WebSocketServer:
         if c.is_alive:
             self.queue.put(c)
 
-    def start(self, func, thread_count):
+    def start(self, func, worker_thread_count=5):
         Thread(target=self.listen).start()
-        print('Starting connection handler')
-        for i in range(thread_count):
+        if self.debug:
+            print('Starting connection handlers')
+        for i in range(worker_thread_count):
             t = Thread(target=self.worker, args=(func,))
             t.start()
 
     def stop(self):
-        self.is_kill = True
-        print('Stopping server...')
+        self.exit_scheduled = True
+        if self.debug:
+            print('Stopping server...')
         for t in self.threads:
             t.join()
