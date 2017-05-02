@@ -42,17 +42,17 @@ OPCODE_PING = 0x09
 OPCODE_PONG = 0x0a
 
 
-def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
-    print('BUILDING FRAME')
+def build_frame(outgoing_data, opcode, data_type=OPCODE_TEXT):
+    if opcode == OPCODE_BINARY and not data_type == OPCODE_BINARY:
+        raise ValueError('1007 - Invalid frame, opcode is binary data, but the specified data type is not binary data')
 
     if outgoing_data is None:
         outgoing_data = ''
 
-    payload = None
-    if opcode == OPCODE_TEXT or opcode == OPCODE_CLOSE or opcode == OPCODE_PING or opcode == OPCODE_PONG:
+    payload = outgoing_data
+
+    if not data_type == OPCODE_BINARY:
         payload = outgoing_data.encode('utf-8')
-    if opcode == OPCODE_BINARY:
-        payload = outgoing_data
 
     # The bytes in the header, no data
     header = b''
@@ -64,9 +64,7 @@ def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
     # Mask, server does not send masked data
     mask_bit = 0x0
 
-    print('Payload: {}'.format(payload))
     payload_length = len(payload)
-    print('Payload length: {}'.format(payload_length))
 
     if payload_length < 126:
         # Creates a byte with mask_bit first
@@ -86,13 +84,10 @@ def build_frame(outgoing_data, opcode=OPCODE_CONTINUATION):
 
 
 def unmask(incoming_data):
-    print('UNMASKING')
     if not incoming_data:
         raise ValueError('1002 - No data to unmask')
 
     frame = bytearray(incoming_data)
-    print('Frame comes here:')
-    print(frame)
 
     opcode = frame[0] & OPCODE
     fin = frame[0] & FIN
@@ -120,7 +115,6 @@ def unmask(incoming_data):
     # Using & 127 to omit the first bit, which is the masking bit
     # This gives us the payload length
     length = frame[1] & 127
-    print('length in first byte: {}'.format(length))
 
     # Checking if a control frame is carrying a too large payload
     if opcode > 0x07 and length > 125:
@@ -129,8 +123,6 @@ def unmask(incoming_data):
     mask_key_start = 2
     if length == 126:
         mask_key_start = 4
-        print('decimal value in second byte: {}'.format(frame[2]))
-        print('decimal value in third byte: {}'.format(frame[3]))
         length = (frame[2] << 8) + frame[3]
     elif length == 127:
         mask_key_start = 10
@@ -138,11 +130,8 @@ def unmask(incoming_data):
         # Going though every byte in the extended payload length, and adding the decimal values
         j = 7
         for i in range(2, 10):
-            print('decimal value of byte {0}: {1}'.format(i, frame[i]))
             length += (frame[i] << (8 * j))
             j -= 1
-
-    print('total length: {}'.format(length))
 
     # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
     data_start = mask_key_start + 4
@@ -177,19 +166,16 @@ def unmask(incoming_data):
 
 if __name__ == '__main__':
 
-    # data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
-    #
-    # print(unmask(data))
+    data = [0x81, 0x83, 0xb4, 0xb5, 0x03, 0x2a, 0xdc, 0xd0, 0x6a]
 
     # data = build_frame('X?P=Uøåæ%46&D%^?jQL!srQS!kæøåe9K-$5KUFd4jJKK6jdvøå3Yp!=4cR4F!cC+E6Y!Vøåæøåæ'
-    #                   'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå', OPCODE_TEXT)
-    data = build_frame('☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭'
-                       '☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭☭a', OPCODE_TEXT)
+    #                    'wdL5@2!6kwcrøåæ*79pUJv?8B=*KWzC+PZxtøæå7&8m56w!TQqy6BDec#qVTkJQFBj_4U$Hhæøå'
+    #                    , OPCODE_BINARY, OPCODE_TEXT)
+
+    data = build_frame(b'\x34\x65\x33', OPCODE_BINARY, OPCODE_BINARY)
 
     print(data)
 
     print('---------')
 
-    # print(unmask(data).return_data)
-
-    print(unmask(b''))
+    print(unmask(data).return_data)
