@@ -5,8 +5,8 @@ import sys
 from web_socket_server import WebSocketServer
 
 
-def connection_handler(msg, connection):
-    print('msg recieved:', msg)
+def message_handler(msg, connection):
+    print('msg received from', connection, ':', msg)
 
 
 def signal_handler(signal, frame):
@@ -16,7 +16,7 @@ def signal_handler(signal, frame):
 
 
 if __name__ == '__main__':
-    s = WebSocketServer('0.0.0.0', 80, debug=True)
-    s.start(connection_handler, worker_thread_count=20)
+    s = WebSocketServer('0.0.0.0', 80, debug=False)
+    s.start(message_handler, worker_thread_count=20)
 
     signal.signal(signal.SIGINT, signal_handler)
