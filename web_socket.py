@@ -5,9 +5,6 @@ from base64 import b64encode
 import frame_handler
 from buffer import Buffer
 
-ping_interval_seconds = 5
-ping_pong_keepalive_interval = 3
-
 
 class WebSocket:
     GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -28,26 +25,30 @@ class WebSocket:
 
     buffer = None
 
-    def __init__(self, conn):
+    ping_interval_seconds = 20
+    ping_pong_keep_alive_interval = 3
+
+    def __init__(self, conn, ping_interval_seconds, ping_pong_keep_alive_interval):
         self.conn = conn
         self.conn.setblocking(0)
+        self.ping_interval_seconds = ping_interval_seconds
+        self.ping_pong_keep_alive_interval = ping_pong_keep_alive_interval
 
     def keep_alive(self):
         now = time.time()
-        # print(now - self.time_at_last_activity)
-        if now - self.time_at_last_activity > ping_interval_seconds:
+
+        if now - self.time_at_last_activity > self.ping_interval_seconds:
             self.send_ping()
             self.time_at_last_activity = now
 
-        if self.time_rec_next_pong_to_live > ping_pong_keepalive_interval:
-            self.time_rec_next_pong_to_live = now + ping_pong_keepalive_interval
-            print('Request closed due to inactivity')
-            self.request_close()
+        if self.time_rec_next_pong_to_live > self.ping_pong_keep_alive_interval:
+            self.time_rec_next_pong_to_live = now + self.ping_pong_keep_alive_interval
+            self.send_close('Connection closed due to inactivity')
+            self.close()
 
-    def close(self, reason):
+    def close(self,):
         self.is_alive = False
         self.conn.close()
-        print('Closing connection. Reason:', reason)
 
     def do_handshake(self, headers):
         sec_web_key = 'Sec-WebSocket-Key'.lower()
@@ -67,13 +68,13 @@ class WebSocket:
 
     def request_close(self):
         self.server_requested_close = True
-        self.send_close('')
+        self.send_close('1000')
 
     def recv(self):
         if self.hands_shook:
             self.keep_alive()
 
-        bytes_rec = self.conn.recv(1024)  # raises error if no data received. This is handled elsewhere
+        bytes_rec = self.conn.recv(65536)  # raises error and returns if no data received. Error is handled elsewhere
         self.time_at_last_activity = time.time()
         if not bytes_rec:
             return
@@ -86,7 +87,9 @@ class WebSocket:
                     msg = frame_handler.unmask(bytes_rec, self.buffer.datatype)
                 else:
                     msg = frame_handler.unmask(bytes_rec)
-            except:
+            except ValueError as er:
+                self.send_close(er)
+                self.close()
                 return
 
             print(vars(msg))
@@ -98,6 +101,9 @@ class WebSocket:
 
             if msg.is_ping:
                 return self.handle_ping(payload)
+
+            if msg.is_close:
+                return self.handle_close(payload, '1000')
 
             if msg.is_close_fin:
                 if msg.is_continuation:
@@ -113,16 +119,13 @@ class WebSocket:
                 else:
                     self.buffer = Buffer(msg.is_text)
                     self.buffer.append(payload)
-
-            if msg.is_close:
-                return self.handle_close(payload, 'Client close request')
         else:  # if handshake not done
             headers = self.parse_as_headers(bytes_rec)
             if not self.do_handshake(headers):
                 # not a valid handshake as first request
                 # close connection
                 print('Not a valid handshake request received as first message. Closing connection...')
-                self.close('Not a valid handshake request recieved')
+                self.close()
             else:
                 print('Valid handshake completed')
 
@@ -131,22 +134,21 @@ class WebSocket:
         pass
 
     def send_ping(self):
-        # print('Sending ping')
+        print('Sending ping')
         self.send_msg(frame_handler.build_frame('phony', opcode=frame_handler.OPCODE_PING))
 
     def send_close(self, msg):
+        print('Sending close')
         self.send_msg(frame_handler.build_frame(msg, frame_handler.OPCODE_CLOSE))
 
     def handle_ping(self, message):
         pong_msg = frame_handler.build_frame(message, frame_handler.OPCODE_PONG)
         self.send_msg(pong_msg)
-        return self.recv()
 
     def handle_close(self, msg, reason):
         if not self.server_requested_close:
             self.send_close(msg)
-        self.close(reason)
-        return msg
+        self.close()
 
     @staticmethod
     def parse_as_headers(data):

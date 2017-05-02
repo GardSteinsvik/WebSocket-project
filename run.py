@@ -1,26 +1,22 @@
 # -*- coding: utf-8 -*-
 import signal
 import sys
-import time
 
 from web_socket_server import WebSocketServer
 
 
-def create_server(port):
-    server = WebSocketServer('0.0.0.0', port)
-    return server
-
-
-def connection_handler(msg):
+def connection_handler(msg, connection):
     print('msg recieved:', msg)
 
 
-if __name__ == '__main__':
-    s = create_server(80)
-    s.start(connection_handler)
+def signal_handler(signal, frame):
+    print("Caught Ctrl+C, shutting down...")
+    s.stop()
+    sys.exit()
 
-    def signal_handler(signal, frame):
-        print("Caught Ctrl+C, shutting down...")
-        sys.exit()
+
+if __name__ == '__main__':
+    s = WebSocketServer('0.0.0.0', 80)
+    s.start(connection_handler, 20)
 
     signal.signal(signal.SIGINT, signal_handler)
