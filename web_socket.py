@@ -36,6 +36,9 @@ class WebSocket:
         self.debug = debug
 
     def keep_alive(self):
+        """
+        Does checks to see if connection is still alive and sends a ping if no activity.
+        """
         now = time.time()
 
         if now - self.time_at_last_activity > self.ping_interval_seconds:
@@ -47,11 +50,20 @@ class WebSocket:
             self.send_close('Connection closed due to inactivity')
             self.close()
 
-    def close(self,):
+    def close(self, ):
+        """
+        Closes the connection and sets a value that lets the server-threads know that it is closed.
+        :return:
+        """
         self.is_alive = False
         self.conn.close()
 
     def do_handshake(self, headers):
+        """
+        Parses the incoming headers and responds with a handshake if the incoming headers are correct
+        :param headers: Dictionary of headers received from the client. Keys in lower case
+        :return: True if the handshake-request was valid, False otherwise
+        """
         sec_web_key = 'Sec-WebSocket-Key'.lower()
 
         if sec_web_key in headers.keys():
@@ -65,17 +77,29 @@ class WebSocket:
             return True
 
     def send_msg(self, msg):
+        """
+        Sends the given frame to the client
+        :param msg: A frame
+        """
         self.conn.send(msg)
 
     def request_close(self):
+        """
+        Sends a close-request with the code '1000' to the client
+        """
         self.server_requested_close = True
         self.send_close('1000')
 
     def recv(self):
+        """
+        Receives and parses a message from the client.
+        :return: The decoded message payload if one was received and it was not a control-frame. None if not.
+        """
         if self.hands_shook:
             self.keep_alive()
 
-        bytes_rec = self.conn.recv(65536)  # raises error and returns if no data received. Error is handled elsewhere
+        # raises error and returns if no data received. Error is handled byte the server
+        bytes_rec = self.conn.recv(65536)
         self.time_at_last_activity = time.time()
         if not bytes_rec:
             return
@@ -100,7 +124,7 @@ class WebSocket:
                 return self.handle_ping(payload)
 
             if msg.is_close:
-                return self.handle_close(payload, '1000')
+                return self.handle_close(payload)
 
             if msg.is_close_fin:
                 if msg.is_continuation:
@@ -116,7 +140,7 @@ class WebSocket:
                 else:
                     self.buffer = Buffer(msg.is_text)
                     self.buffer.append(payload)
-        else:  # if handshake not done
+        else:  # if handshake has not been done
             headers = self.parse_as_headers(bytes_rec)
             if not self.do_handshake(headers):
                 # not a valid handshake as first request
@@ -129,25 +153,40 @@ class WebSocket:
                     print('Valid handshake completed')
 
     def handle_pong(self):
+        """
+        Handles a pong-request. Nothing has to be done here.
+        """
         if self.debug:
             print('Recieved pong')
         pass
 
     def send_ping(self):
+        """
+        Sends a ping-request to the client
+        """
         if self.debug:
             print('Sending ping')
         self.send_msg(frame_handler.build_frame('phony', opcode=frame_handler.OPCODE_PING))
 
     def send_close(self, msg):
+        """
+        Sends a close-request to the client
+        """
         if self.debug:
             print('Sending close')
         self.send_msg(frame_handler.build_frame(msg, frame_handler.OPCODE_CLOSE))
 
     def handle_ping(self, message):
+        """
+        Handles a ping-request from the client
+        """
         pong_msg = frame_handler.build_frame(message, frame_handler.OPCODE_PONG)
         self.send_msg(pong_msg)
 
-    def handle_close(self, msg, reason):
+    def handle_close(self, msg):
+        """
+        Sends a close-request to the client
+        """
         if not self.server_requested_close:
             self.send_close(msg)
         self.close()

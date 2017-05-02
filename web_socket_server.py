@@ -31,6 +31,9 @@ class WebSocketServer:
         self.debug = debug
 
     def listen(self):
+        """
+        Listens for connections until exit_scheduled is true. Connections are added to the queue on connect.
+        """
         self.server_socket.setblocking(0)
         self.server_socket.listen()
         while not self.exit_scheduled:
@@ -45,10 +48,19 @@ class WebSocketServer:
                 pass  # no connection yet
 
     def worker(self, func):
+        """
+        Function that loops and calls single_action until exit_scheduled is true.
+        :param func: Function to be called on message and connection when data is received.
+        """
         while not self.exit_scheduled:
             self.single_action(func)
 
     def single_action(self, func):
+        """
+        Listens to a socket, does nothing if no data is received. Calls the given function on the message and socket
+        if data was received.
+        :param func: The function to be called with the message and socket.
+        """
         c = self.queue.get()
         try:
             msg = c.recv()
@@ -61,6 +73,13 @@ class WebSocketServer:
             self.queue.put(c)
 
     def start(self, func, worker_thread_count=5):
+        """
+        Starts the server
+        :param func: The function to be called when a message is received. This function takes a msg object, which is
+        the decoded payload of the bytes received, and a connection-object, which is the socket that received the
+        message. This function calls the listen-method
+        :param worker_thread_count: Number of threads to use as worker-threads.
+        """
         Thread(target=self.listen).start()
         if self.debug:
             print('Starting connection handlers')
@@ -69,6 +88,9 @@ class WebSocketServer:
             t.start()
 
     def stop(self):
+        """
+        Stops the server by telling the workers to stop, and waiting for them to do so.
+        """
         self.exit_scheduled = True
         if self.debug:
             print('Stopping server...')
