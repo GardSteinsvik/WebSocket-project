@@ -83,7 +83,7 @@ def build_frame(outgoing_data, opcode, data_type=OPCODE_TEXT):
     return header + payload
 
 
-def unmask(incoming_data, data_type=OPCODE_TEXT):
+def unmask(incoming_data, data_type=None):
     if not incoming_data:
         raise ValueError('1002 - No data to unmask')
 
@@ -104,10 +104,9 @@ def unmask(incoming_data, data_type=OPCODE_TEXT):
     if 0x02 < opcode < 0x08 or opcode > 0x0a:
         raise ValueError('1002 - Reserved opcode')
 
-    # Checking if specified data type is stated in opcode
-    if (data_type == OPCODE_BINARY and not opcode == OPCODE_BINARY) or \
-            (data_type == OPCODE_TEXT and not opcode == OPCODE_TEXT):
-        raise ValueError('1007 - Invalid frame, opcode data type does not match the specified data type')
+    # Checking if specified data type is stated if it is a continuation frame
+    if opcode == OPCODE_CONTINUATION and data_type is None:
+        raise ValueError('Unmasking failed: Opcode is continuation, but there is no provided data type.')
 
     # Checking if a control frame is fragmented
     if opcode > 0x07 and fin == 0:
