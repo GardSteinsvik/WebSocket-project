@@ -30,7 +30,11 @@
 
                         socket.onclose = function () {
                             message('<p class="event">Socket Status: ' + socket.readyState + ' (Closed)');
-                        }
+                        };
+
+                        socket.onerror=function(event){
+                            console.log(event);
+                        };
 
                     } catch (exception) {
                         message('<p>Error' + exception);

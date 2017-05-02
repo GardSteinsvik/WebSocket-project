@@ -147,7 +147,7 @@ def unmask(incoming_data, data_type=None):
         output_bytes += struct.pack('!B', frame[i] ^ frame[mask_key_start + (i - data_start) % 4])
 
     msg = UnmaskedMessage()
-    msg.is_close_fin = frame[0] & FIN == 0
+    msg.is_close_fin = frame[0] & FIN != 0
 
     msg.is_continuation = opcode == OPCODE_CONTINUATION
     msg.is_close = opcode == OPCODE_CLOSE
