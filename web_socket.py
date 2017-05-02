@@ -80,11 +80,14 @@ class WebSocket:
 
         if self.hands_shook:
             # print('bytes recieved:', bytes_rec)
-            if self.buffer:
-                print(self.buffer.datatype)
-                msg = frame_handler.unmask(bytes_rec, self.buffer.datatype)
-            else:
-                msg = frame_handler.unmask(bytes_rec)
+            try:
+                if self.buffer:
+                    print(self.buffer.datatype)
+                    msg = frame_handler.unmask(bytes_rec, self.buffer.datatype)
+                else:
+                    msg = frame_handler.unmask(bytes_rec)
+            except ValueError as a:
+                return a
 
             print(vars(msg))
 

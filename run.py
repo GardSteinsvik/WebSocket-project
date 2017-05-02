@@ -16,7 +16,7 @@ def connection_handler(msg):
 
 
 if __name__ == '__main__':
-    s = create_server(80, )
+    s = create_server(80)
     s.start(connection_handler)
 
     def signal_handler(signal, frame):
