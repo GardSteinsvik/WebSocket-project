@@ -24,6 +24,3 @@ if __name__ == '__main__':
         sys.exit()
 
     signal.signal(signal.SIGINT, signal_handler)
-
-    while True:
-        time.sleep(100)

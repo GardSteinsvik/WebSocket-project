@@ -86,8 +86,8 @@ class WebSocket:
                     msg = frame_handler.unmask(bytes_rec, self.buffer.datatype)
                 else:
                     msg = frame_handler.unmask(bytes_rec)
-            except ValueError as a:
-                return a
+            except:
+                return
 
             print(vars(msg))
 
