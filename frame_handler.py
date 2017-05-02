@@ -103,7 +103,7 @@ def unmask(incoming_data, data_type=None):
 
     # Checking if specified data type is stated if it is a continuation frame
     if opcode == OPCODE_CONTINUATION and data_type is None:
-        raise ValueError('Unmasking failed: Opcode is continuation, but there is no provided data type.')
+        raise ValueError('Internal unmasking error: Opcode is continuation, but there is no provided data type.')
 
     # Checking if a control frame is fragmented
     if opcode > 0x07 and fin == 0:
@@ -114,35 +114,31 @@ def unmask(incoming_data, data_type=None):
         raise ValueError('1002 - Mask bit sent from client must be 1')
 
     # Using & 127 to omit the first bit, which is the masking bit
-    length = frame[1] & 127
+    initial_length = frame[1] & 127
 
     # Checking if a control frame is carrying a too large payload
-    if opcode > 0x07 and length > 125:
+    if opcode > 0x07 and initial_length > 125:
         raise ValueError('1002 - A control frame cannot use extended payload length')
 
+    payload_length = initial_length
     mask_key_start = 2
-    if length == 126:
+    if initial_length == 126:
         mask_key_start = 4
-        length = (frame[2] << 8) + frame[3]
-    elif length == 127:
+        payload_length = (frame[2] << 8) + frame[3]
+    elif initial_length == 127:
         mask_key_start = 10
-        length = 0
+        payload_length = 0
         # Going though every byte in the extended payload length, and adding the decimal values
         j = 7
         for i in range(2, 10):
-            length += (frame[i] << (8 * j))
+            payload_length += (frame[i] << (8 * j))
             j -= 1
 
     # the masking key is always 4 bytes, so the payload is always 4 bytes after where the masking key starts
     data_start = mask_key_start + 4
 
-    try:
-        frame[data_start+length-1]
-    except IndexError:
-        raise ValueError('1002 - Provided length of payload is larger than the actual payload')
-
     output_bytes = b''
-    for i in range(data_start, data_start+length):
+    for i in range(data_start, data_start+payload_length):
         # Using an XOR-operation with the payload and masking key to unmask the payload
         output_bytes += struct.pack('!B', frame[i] ^ frame[mask_key_start + (i - data_start) % 4])
 
