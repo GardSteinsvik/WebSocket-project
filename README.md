@@ -2,9 +2,13 @@
 Project in "Nettverksprogrammering". IDI, NTNU.
 
 ## Usage
+The library requires at least python 3.6.
+
 This example creates a server that prints messages and the connection object that received the message out to the console.
 
 Running this script will open a web-socket accepting connections on all ips on port 80. You can test it by open the file `client/index.html` in your browser. The HTML-file simply opens a web-socket using the jquery library. You can then send text-messages through the text-field.
+
+The test_server-script can be run the command `python3 test_server.py`.
 
 ```python
 import signal
