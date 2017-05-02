@@ -77,9 +77,6 @@ def build_frame(outgoing_data, opcode, data_type=OPCODE_TEXT):
         # !Q = 8 bytes
         header += struct.pack('!B', (mask_bit | 127)) + struct.pack('!Q', payload_length)
 
-    # Adding 4 empty bytes to fill the masking key
-    header += struct.pack('!L', 0)
-
     return header + payload
 
 
@@ -117,7 +114,6 @@ def unmask(incoming_data, data_type=None):
         raise ValueError('1002 - Mask bit sent from client must be 1')
 
     # Using & 127 to omit the first bit, which is the masking bit
-    # This gives us the payload length
     length = frame[1] & 127
 
     # Checking if a control frame is carrying a too large payload
