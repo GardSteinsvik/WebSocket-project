@@ -83,6 +83,9 @@ class WebSocket:
         """
         self.conn.send(msg)
 
+    def send_text(self, msg):
+        self.send_msg(frame_handler.build_frame(msg, frame_handler.OPCODE_TEXT))
+
     def request_close(self):
         """
         Sends a close-request with the code '1000' to the client

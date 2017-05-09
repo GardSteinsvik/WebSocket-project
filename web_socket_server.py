@@ -31,7 +31,7 @@ class WebSocketServer:
         self.ping_pong_keep_alive_interval = ping_pong_keep_alive_interval
         self.debug = debug
 
-    def listen(self):
+    def listen(self, connection_handler):
         """
         Listens for connections until exit_scheduled is true. Connections are added to the queue on connect.
         """
@@ -42,25 +42,29 @@ class WebSocketServer:
                 conn, address = self.server_socket.accept()
                 if self.debug:
                     print('Connection attempt received at ' + address[0])
-                self.queue.put(WebSocket(conn, ping_interval_seconds=self.ping_interval_seconds,
-                                         ping_pong_keep_alive_interval=self.ping_pong_keep_alive_interval,
-                                         debug=self.debug))
+
+                ws = WebSocket(conn, ping_interval_seconds=self.ping_interval_seconds,
+                               ping_pong_keep_alive_interval=self.ping_pong_keep_alive_interval,
+                               debug=self.debug)
+                connection_handler(ws, address)
+                self.queue.put(ws)
             except socket.error:
                 pass  # no connection yet
 
-    def worker(self, func):
+    def worker(self, message_handler):
         """
         Function that loops and calls single_action until exit_scheduled is true.
-        :param func: Function to be called on message and connection when data is received.
+        :param message_handler: Function to be called on message and connection when data is received.
         """
         while not self.exit_scheduled:
-            self.single_action(func)
+            self.single_action(message_handler)
 
     def single_action(self, func):
         """
         Listens to a socket, does nothing if no data is received. Calls the given function on the message and socket
         if data was received.
         :param func: The function to be called with the message and socket.
+        :param 
         """
         c = self.queue.get()
         try:
@@ -73,19 +77,20 @@ class WebSocketServer:
         if c.is_alive:
             self.queue.put(c)
 
-    def start(self, func, worker_thread_count=5):
+    def start(self, message_handler, connection_handler, worker_thread_count=5):
         """
         Starts the server
-        :param func: The function to be called when a message is received. This function takes a msg object, which is
+        :param connection_handler: function to be called when a new connection is created
+        :param message_handler: The function to be called when a message is received. This function takes a msg object, which is
         the decoded payload of the bytes received, and a connection-object, which is the socket that received the
         message. This function calls the listen-method
         :param worker_thread_count: Number of threads to use as worker-threads.
         """
-        Thread(target=self.listen).start()
+        Thread(target=self.listen, args=(connection_handler,)).start()
         if self.debug:
             print('Starting connection handlers')
         for i in range(worker_thread_count):
-            t = Thread(target=self.worker, args=(func,))
+            t = Thread(target=self.worker, args=(message_handler,))
             t.start()
 
     def stop(self):
