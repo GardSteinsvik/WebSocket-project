@@ -51,33 +51,35 @@ class WebSocketServer:
             except socket.error:
                 pass  # no connection yet
 
-    def worker(self, message_handler):
+    def worker(self, message_handler, disconnection_handler):
         """
         Function that loops and calls single_action until exit_scheduled is true.
         :param message_handler: Function to be called on message and connection when data is received.
         """
         while not self.exit_scheduled:
-            self.single_action(message_handler)
+            self.single_action(message_handler, disconnection_handler)
 
-    def single_action(self, func):
+    def single_action(self, connection_handler, disconnection_handler):
         """
         Listens to a socket, does nothing if no data is received. Calls the given function on the message and socket
         if data was received.
-        :param func: The function to be called with the message and socket.
+        :param connection_handler: The function to be called with the message and socket.
         :param 
         """
         c = self.queue.get()
         try:
             msg = c.recv()
             if msg:
-                func(msg, c)
+                connection_handler(msg, c)
         except socket.error:
             # no data received yet
             pass
         if c.is_alive:
             self.queue.put(c)
+        else:
+            disconnection_handler(c)
 
-    def start(self, message_handler, connection_handler, worker_thread_count=5):
+    def start(self, message_handler, connection_handler, disconnection_handler, worker_thread_count=5):
         """
         Starts the server
         :param connection_handler: function to be called when a new connection is created
@@ -90,7 +92,7 @@ class WebSocketServer:
         if self.debug:
             print('Starting connection handlers')
         for i in range(worker_thread_count):
-            t = Thread(target=self.worker, args=(message_handler,))
+            t = Thread(target=self.worker, args=(message_handler, disconnection_handler))
             t.start()
 
     def stop(self):
